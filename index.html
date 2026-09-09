@@ -5,25 +5,15 @@
   <title>LetsCrackkk TV</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { background: #0a1a3f; color: white; font-family: Arial; padding: 0; margin: 0; }
-    .banner { width: 100%; max-height: 400px; object-fit: cover; border-bottom: 4px solid #0077ff; display: none; }
+    body { background: #0a0a0a; color: white; font-family: Arial; padding: 0; margin: 0; }
+    .banner { width: 100%; max-height: 350px; object-fit: cover; border-bottom: 3px solid #0077ff; display: none; }
     .content { padding: 20px; text-align: center; }
-    h1 { color: #0077ff; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; max-width: 1200px; margin: 20px auto; }
-    .video { background: #112b5e; padding: 15px; border-radius: 12px; text-align: left; }
-    video { width: 100%; border-radius: 8px; }
-    h3 { font-size: 16px; margin: 10px 0; }
-    .like-btn { 
-      background: #0077ff; 
-      border: none; 
-      color: white; 
-      padding: 8px 15px; 
-      border-radius: 20px; 
-      cursor: pointer; 
-      font-weight: bold;
-    }
-    .like-btn.liked { background: #ff0055; }
-    .likes { margin-left: 10px; font-size: 14px; }
+    h1 { color: #0077ff; margin-bottom: 5px; }
+    p { color: #aaa; margin-top: 0; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; max-width: 1200px; margin: 20px auto; padding: 0 10px; }
+    .video { background: #111; padding: 12px; border-radius: 10px; text-align: left; border: 1px solid #222; }
+    video { width: 100%; border-radius: 8px; background: black; }
+    h3 { font-size: 15px; margin: 8px 0 0 0; color: #ddd; }
   </style>
 </head>
 <body>
@@ -31,7 +21,7 @@
 
   <div class="content">
     <h1>📺 LetsCrackkk TV</h1>
-    <p>Watch only. No uploads here.</p>
+    <p>Watch videos only</p>
     <div id="videoList" class="grid">Loading videos...</div>
   </div>
 
@@ -41,49 +31,36 @@
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
     async function loadVideos() {
-      const { data: files } = await supabase.storage.from('Videos').list('', { limit: 100, sortBy: { column: 'created_at', order: 'desc' } })
-      const { data: likes } = await supabase.from('likes').select('*')
+      const { data: files, error } = await supabase.storage.from('Videos').list('', { limit: 100, sortBy: { column: 'created_at', order: 'desc' } })
       
-      const container = document.getElementById('videoList')
-      const videoFiles = files.filter(f => f.name.match(/\.(mp4|webm|mov)$/i))
+      if (error) { document.getElementById('videoList').innerText = 'Error loading videos'; return }
       
-      // Banner
+      // Banner - first image in bucket
       const imageFile = files.find(f => f.name.match(/\.(jpg|jpeg|png)$/i))
       if(imageFile) {
         const { data } = supabase.storage.from('Videos').getPublicUrl(imageFile.name)
-        document.getElementById('banner').src = data.publicUrl
-        document.getElementById('banner').style.display = 'block'
+        const banner = document.getElementById('banner')
+        banner.src = data.publicUrl
+        banner.style.display = 'block'
       }
 
+      const container = document.getElementById('videoList')
+      const videoFiles = files.filter(f => f.name.match(/\.(mp4|webm|mov)$/i))
+      
+      if(videoFiles.length === 0) { container.innerText = 'No videos yet'; return }
+      
       container.innerHTML = ''
       videoFiles.forEach(file => {
         const { data } = supabase.storage.from('Videos').getPublicUrl(file.name)
-        const videoLikes = likes.filter(l => l.video_name === file.name).length
-        const liked = localStorage.getItem('liked_' + file.name)
-
+        const title = file.name.replace(/\.[^/.]+$/, "") // removes .mp4
         container.innerHTML += `
           <div class="video">
-            <h3>${file.name.replace('.mp4','')}</h3>
             <video controls src="${data.publicUrl}"></video>
-            <div style="margin-top:10px">
-              <button class="like-btn ${liked ? 'liked' : ''}" onclick="likeVideo('${file.name}')">
-                ❤️ ${liked ? 'Liked' : 'Like'}
-              </button>
-              <span class="likes">${videoLikes} likes</span>
-            </div>
+            <h3>${title}</h3>
           </div>
         `
       })
     }
-
-    async function likeVideo(videoName) {
-      if(localStorage.getItem('liked_' + videoName)) return alert('You already liked this')
-      
-      await supabase.from('likes').insert({ video_name: videoName })
-      localStorage.setItem('liked_' + videoName, 'true')
-      loadVideos()
-    }
-
     loadVideos()
   </script>
 </body>
